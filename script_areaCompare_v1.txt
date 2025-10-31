@@ -1,0 +1,109 @@
+
+
+# ================================
+# @nkour - October 2025
+# ================================
+
+# Script to accompany the paper: 
+# Kour, N., Garcia-Molsosa, A., Orengo, H.A., and Conesa, F.C. 
+# Mapping disappearing archaeological heritage in monsoonal river plains with legacy geospatial data
+# 2025, submitted to #tba
+
+# require
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+require(ggalluvial)
+
+# dataset
+VIShex <- read.csv("C:/fconesa_desktop_repo/desktop_workspace/stats_jammu/area_hex_geo.csv")
+head(VIShex)
+
+# dataset long
+VIShexL <- gather(VIShex, source, area, area_goo:area_hex, factor_key=TRUE) 
+head(VIShexL)
+levels(VIShexL$source)
+VIShexL$source <- factor(VIShexL$source, levels=c('area_hex', 'area_goo'))
+
+# ================================================================
+# AREA PLOT TESTS
+# ================================================================
+
+# ggplot histogram
+ggplot(VIShexL, aes(x=area, fill=source)) +
+  geom_histogram( color="#e9ecef", alpha=0.6, position = 'identity') +
+  scale_fill_manual(values=c("#69b3a2", "#404080")) +
+  theme_bw() +
+  labs(fill="") + 
+  ylab("Visible archaeological mounds (n)") +
+  xlab("Area (ha)") +
+  facet_wrap(~source)
+
+# ggplot biolin
+ggplot(VIShexL, aes(x=source, y=area, fill=source)) +
+  geom_violin(width=1.4) +
+  geom_boxplot(width=0.1, color="grey", alpha=0.2) +
+  theme_bw() +
+  theme(
+    legend.position="none",
+    plot.title = element_text(size=11)
+  ) +
+  ylab("Visible archaeological mounds (n)") +
+  xlab("Area (ha)")
+
+# ggplot density
+ggplot(VIShexL, aes(x=area, group=source, fill=source)) +
+  geom_density(adjust=1.5) +
+  theme_bw() +
+  theme(
+    legend.position="none",
+    panel.spacing = unit(0.1, "lines"),
+    axis.ticks.x=element_blank()
+  ) +
+  facet_wrap(~source) 
+
+# ggplot density v2 semitrans
+ggplot(VIShexL, aes(x=area)) +
+  geom_density(aes(fill=source), alpha = 0.4) +
+  geom_vline(aes(xintercept = mean(area)), color = "#800000", linetype = "dashed") +
+  scale_color_manual(values = c("#868686FF", "#EFC000FF"))+
+  scale_fill_manual(values = c("#868686FF", "#EFC000FF"))
+
+# ggplot scatter
+ggplot(VIShexL, aes(x=fid, y=area, color=source)) + 
+  geom_point(size=6) +
+  theme_bw()
+
+# ggplot barplot
+ggplot(VIShexL, aes(x=fid, y=area, fill=source)) +
+  geom_bar(position='dodge', stat='identity') + 
+  theme_bw()
+
+# ggplot barplot v2
+ggplot(VIShexL, aes(x=fid, y=area, fill=source)) +
+  geom_bar(stat='identity') + 
+  theme_bw()
+
+
+# ================================================================
+# PLOT EXPORT
+# ================================================================
+
+ggplot(VIShexL, aes(x=area)) +
+  geom_density(aes(fill=source), alpha = 0.4) +
+  geom_vline(aes(xintercept = mean(area)), color = "#800000", linetype = "dashed") +
+  scale_fill_manual(name = "Geospatial source", 
+                    labels = c("HEXAGON (1982)", "Google/Bing basemaps"),
+                    values = c("darkblue", "#EFC000FF")) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size=16, face="bold"), 
+    axis.text = element_text(size=16),
+    panel.grid.major.x = element_blank(),
+    legend.title = element_text(size=16), 
+    legend.text = element_text(size=15)
+  ) +
+  ylab("Site density \n") +
+  xlab("\n Area size (ha)")
+ggsave("riverine_AreaCompare.jpg", width = 12, height = 10)
+

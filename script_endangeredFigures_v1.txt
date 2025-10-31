@@ -1,0 +1,352 @@
+
+
+# ================================
+# @nkour - October 2025
+# ================================
+
+# Script to accompany the paper: 
+# Kour, N., Garcia-Molsosa, A., Orengo, H.A., and Conesa, F.C. 
+# Mapping disappearing archaeological heritage in monsoonal river plains with legacy geospatial data
+# 2025, submitted to #tba
+
+# require
+require(ggplot2)
+require(dplyr)
+require(tidyr)
+require(ggalluvial)
+
+# dataset
+RIV2 = read.csv("user path../20251031_endangeredDataset.csv")
+str(RIV2)
+
+
+# ================================================================
+# SITE TABLE COUNTS
+# ================================================================
+
+# 56 originally 
+# count with "dplyr"
+# if count by "plyr" should be count(RIV2$revisited))
+
+str(RIV2)
+
+count(RIV2, revisited) # sites in ASI, revisited or not by Navjot
+count(RIV2, new) # Phd new, RIVERINE new (not previously mapped by ASI)
+count(RIV2, accuracy) # sites with accurate coords, regardless of being visited or not 
+count(RIV2, validated) # sites visited in the field, regardless of being new or known
+count(RIV2, risk_ass) # risk assessment subjective observation 
+
+count(RIV2, seq)
+count(RIV2, agr)
+count(RIV2, agr_levell)
+count(RIV2, age_enchrd)
+count(RIV2, urban) # urban
+count(RIV2, bldng) # urban
+count(RIV2, road) # skip
+count(RIV2, brick_fctr) # urban
+count(RIV2, soil_extrc) # urban
+count(RIV2, govt_land) # skip
+count(RIV2, temple_hin) # urban
+count(RIV2, shrine_mus) # urban
+count(RIV2, river)
+count(RIV2, dmpng_area) # urban
+count(RIV2, asi_protct) # skip
+count(RIV2, moat_arnd) # skip
+count(RIV2, military) # skip
+
+
+# ================================================================
+# RISK ASSESMENT 
+# ================================================================
+
+# create freq table
+tableLevels = RIV2 %>% group_by(risk_ass) %>% dplyr::summarize(num=n())
+tableLevels # total endangered buffers
+
+tableLevels = subset(tableLevels, risk_ass!="no data")
+dim(tableLevels)
+tableLevels$risk_ass = factor(tableLevels$risk_ass, levels=c('low', 'medium', 'high', 'total'))
+
+# color palette
+paletteLEVELS_4 = c("green", # low
+                    "#ffcd07", # medium 
+                    "#ec6b14", # high
+                    "#dc0c10") # total
+
+# ggplot risk agri urban rivers
+ggplot(tableLevels, aes(x=risk_ass, y=num, colour=risk_ass)) +
+  geom_point(size=15) +
+  geom_segment(aes(x=risk_ass, xend=risk_ass, y=0, yend=num, linewidth=0.5)) +
+  scale_x_discrete(labels = c("Low","Medium","High", "Total")) +
+  scale_color_manual(values = paletteLEVELS_4) +
+  geom_text(aes(label = num), color = "white", fontface = "bold", size = 4) +
+  coord_flip() +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size=16, face="bold"), 
+    axis.text = element_text(size=16),
+    panel.grid.major.x = element_blank(),
+    legend.position="none") +
+  xlab("Risk assesment \n") + 
+  ylab("\n Validated sites")
+ggsave("riverine_RiskAssessment.jpg", width = 12, height = 10)
+
+# ================================================================
+# MULTITEMP VISIBILITY 
+# ================================================================
+
+RIVvis = RIV2 %>% select(c(fid, site, vis_basema, vis_hex, vis_corona, vis_topo))
+str(RIVvis)
+head(RIVvis)
+
+count(RIVvis, vis_topo)
+count(RIVvis, vis_corona)
+count(RIVvis, vis_hex)
+count(RIVvis, vis_basema)
+
+# VISIBILITY YES 
+# Topo 29
+# Corona 70s 39
+# Hegaxon 80s 57
+# Basemap present 55
+
+# long dataset
+RIVvisL = gather(RIVvis, source, visible, vis_basema:vis_topo, factor_key=TRUE) 
+head(RIVvisL)
+dim(RIVvisL)
+str(RIVvisL)
+RIVvisL$source = factor(RIVvisL$source, levels=c("vis_topo", "vis_corona", "vis_hex", "vis_basema"))
+RIVvisL$visible = factor(RIVvisL$visible, levels=c("yes", "no", "not available", "not sure", "NA"))
+
+# change "not sure" to NA
+RIVvisL = RIVvisL %>%  mutate(visible = na_if(visible, "not sure"))
+
+# alluvial graph in STAT_ALLUVIUM mode
+
+varVisColors = c("lightblue", "darkred", "grey")
+
+RIVvisL  %>%  
+  drop_na(visible) %>% 
+  ggplot(aes(x=source, stratum=visible, alluvium=fid, fill=visible, label=visible)) +
+  geom_flow(stat="alluvium", lode.guidance="rightleft", color="darkgray") +
+  geom_stratum() +
+  scale_x_discrete(labels = c("Topographic maps","CORONA (1972)","HEGAXON (1982)", "Google/Bing basemaps")) +
+  scale_fill_manual(name="Site visibility", 
+                    labels=c("Visible", "Not visible", "Not available"),  
+                    values=varVisColors) +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size=16, face="bold"), 
+    axis.text = element_text(size=16),
+    panel.grid.major.x = element_blank(),
+    legend.title = element_text(size=16), 
+    legend.text = element_text(size=15)
+  ) +
+  ylab("Archaeologial sites \n") +
+  xlab("\n Geospatial sources")
+ggsave("riverine_MultiTempVisibility.jpg", width = 12, height = 10)
+
+
+
+# ================================================================
+# LAND USE IMPACTS
+# ================================================================
+
+# plot indivual impacts
+ggplot(RIV2, aes(x=agr, y=fid)) +
+  geom_bar(stat='identity') + 
+  theme_bw()
+
+ggplot(RIV2, aes(x=urban, y=fid)) +
+  geom_bar(stat='identity') + 
+  theme_bw()
+
+ggplot(RIV2, aes(x=fid, y= bldng)) +
+  geom_bar(stat='identity') + 
+  theme_bw()
+
+ggplot(RIV2, aes(x=river, y=fid)) +
+  geom_bar(stat='identity') + 
+  theme_bw()
+
+# new dataset
+RIVLAND = RIV2 %>% select(c(fid, agr, urban, river)) %>% na.omit()
+head(RIVLAND)
+dim(RIVLAND)
+
+# frequencies and new DF with impact type counts
+tableAgr = RIVLAND %>% group_by(agr) %>% dplyr::summarize(num=n())
+tableUrban = RIVLAND %>% group_by(urban) %>% dplyr::summarize(num=n())
+tableRiver = RIVLAND %>% group_by(river) %>% dplyr::summarize(num=n())
+
+tableAgrL = gather(tableAgr, type, visible, agr, factor_key=TRUE) 
+tableUrbanL = gather(tableUrban, type, visible, urban, factor_key=TRUE) 
+tableRiverL = gather(tableRiver, type, visible, river, factor_key=TRUE) 
+
+DFimpact = rbind(tableAgrL, tableUrbanL, tableRiverL)
+DFimpact$visible = as.factor(DFimpact$visible)
+str(DFimpact)
+
+# change "near khad" for "yes"
+levels(DFimpact$visible)
+levels(DFimpact$visible) <- c("not sure", "yes", "no", "not sure", "yes")
+levels(DFimpact$visible)
+
+# change "not sure" to NA
+DFimpact = DFimpact %>%  mutate(visible = na_if(visible, "not sure"))
+
+# ggplot
+varColors = c("lightgrey", "darkred")
+
+DFimpact  %>%  
+  drop_na(visible) %>%
+  ggplot(aes(x=type, y=num, fill=visible)) +
+  geom_bar(position='dodge', stat='identity') + 
+  scale_x_discrete(labels = c('Agriculture','Buildings','River')) +
+  scale_fill_manual(name="Risk assesment",
+                    labels=c("Endangered", "Not affected"),  
+                    values = varColors) + 
+  theme_bw() +
+  theme(
+    axis.title = element_text(size=16, face="bold"), 
+    axis.text = element_text(size=16),
+    panel.grid.major.x = element_blank(),
+    legend.title = element_text(size=16), 
+    legend.text = element_text(size=15),
+  ) +
+  ylab("Archaeological sites \n ") +
+  xlab("\n Anthropic and natural impact")
+ggsave("riverine_AgriUrbanRiver.jpg", width = 12, height = 10)
+
+
+# ================================================================
+# LAND USE CATEGORICAL
+# ================================================================
+
+DFLandCateg = RIV2
+
+# new dataset
+DFLandCateg = RIV2 %>% select(c(fid, site, revisited, validated, new, accuracy, 
+                                agr, agr_levell, age_enchrd, 
+                                urban, bldng, brick_fctr, soil_extrc, temple_hin, shrine_mus,  dmpng_area))
+head(DFLandCateg)
+dim(DFLandCateg)
+
+# change many buildings categories in "bldng" into a new column for a generic "yes" = there is some building
+DFLandCateg = DFLandCateg %>%  mutate(buildings = case_when(bldng != "no" ~ "yes"))
+
+# frequencies and new DF with impact type counts
+tableAgr_levell = DFLandCateg %>% group_by(agr_levell) %>% dplyr::summarize(num=n())
+tableAge_enchrd = DFLandCateg %>% group_by(age_enchrd) %>% dplyr::summarize(num=n())
+tablebuildings = DFLandCateg %>% group_by(buildings) %>% dplyr::summarize(num=n()) # new column "buildings"
+tableBrick_fctr = DFLandCateg %>% group_by(brick_fctr) %>% dplyr::summarize(num=n())
+tableSoil_extrc = DFLandCateg %>% group_by(soil_extrc) %>% dplyr::summarize(num=n())
+tableTemple_hin = DFLandCateg %>% group_by(temple_hin) %>% dplyr::summarize(num=n())
+tableShrine_mus = DFLandCateg %>% group_by(shrine_mus) %>% dplyr::summarize(num=n())
+tableDmpng_area = DFLandCateg %>% group_by(dmpng_area) %>% dplyr::summarize(num=n())
+
+agr_levellFREQ = gather(tableAgr_levell, type, visible, agr_levell, factor_key=TRUE) 
+age_enchrdFREQ = gather(tableAge_enchrd, type, visible, age_enchrd, factor_key=TRUE) 
+buildingsFREQ = gather(tablebuildings, type, visible, buildings, factor_key=TRUE) # new column "buildings"
+brick_fctrFREQ = gather(tableBrick_fctr, type, visible, brick_fctr, factor_key=TRUE) 
+soil_extrcFREQ = gather(tableSoil_extrc, type, visible, soil_extrc, factor_key=TRUE) 
+temple_hinFREQ = gather(tableTemple_hin, type, visible, temple_hin, factor_key=TRUE) 
+shrine_musFREQ = gather(tableShrine_mus, type, visible, shrine_mus, factor_key=TRUE) 
+dmpng_areaFREQ = gather(tableDmpng_area, type, visible, dmpng_area, factor_key=TRUE) 
+
+DFimpactFREQ = rbind(agr_levellFREQ, age_enchrdFREQ, buildingsFREQ, brick_fctrFREQ, soil_extrcFREQ, temple_hinFREQ, shrine_musFREQ, dmpng_areaFREQ)
+head(DFimpactFREQ)
+dim(DFimpactFREQ)
+DFimpactFREQ$visible = as.factor(DFimpactFREQ$visible)
+levels(DFimpactFREQ$visible)
+levels(DFimpactFREQ$visible) <- c("not sure", "no", "not sure", "not sure", "yes") # solve issue with "not sure[blank space]"
+
+# change "not sure" to NA
+DFimpactFREQ = DFimpactFREQ %>% mutate(visible = na_if(visible, "not sure"))
+
+# create new colum with bigger "groups" depending on type of impact -> ImpactAgri or ImpactUrban 
+DFimpactFREQ = DFimpactFREQ %>% mutate(impactGroup = # if else "no", then is NA
+                                         case_when(type == "agr_levell" & visible == "yes" ~ "ImpactAgri", 
+                                                   type == "age_enchrd" & visible == "yes" ~ "ImpactAgri", 
+                                                   type == "buildings" & visible == "yes" ~ "ImpactUrban", 
+                                                   type == "brick_fctr" & visible == "yes" ~ "ImpactUrban", 
+                                                   type == "soil_extrc" & visible == "yes" ~ "ImpactUrban", 
+                                                   type == "temple_hin" & visible == "yes" ~ "ImpactUrban", 
+                                                   type == "shrine_mus" & visible == "yes" ~ "ImpactUrban", 
+                                                   type == "dmpng_area" & visible == "yes" ~ "ImpactUrban"))
+DFimpactFREQ$impactGroup = as.factor(DFimpactFREQ$impactGroup)
+head(DFimpactFREQ)
+
+# reduce all "no" observations to NA
+DFimpactFREQ = DFimpactFREQ %>% mutate(visible = na_if(visible, "no"))
+
+# ggplot trimapify
+require(treemapify)
+
+# change names
+levels(DFimpactFREQ$impactGroup) <- c("Agriculture", "Urban") 
+levels(DFimpactFREQ$type) <- c("Levelled", "Encroached",
+                               "Built-up", "Brick factories", "Soil extraction", 
+                               "Hindu temple", "Muslim shrine", "Dumping area") 
+# color palette
+varImpactColors = c("darkgreen", "darkgrey")
+
+DFimpactFREQ  %>%  
+  drop_na(visible) %>% 
+  ggplot(aes(area=num, fill=impactGroup, label=paste(type, num, sep = "\n\n\n"), subgroup=impactGroup, subgroup2 = type)) +
+  geom_treemap() +
+  scale_fill_manual(values = varImpactColors) +
+  geom_treemap_subgroup_text(place = "centre", grow = TRUE, alpha = 0.80, colour = "white") +
+  geom_treemap_subgroup_border(colour = "white", size = 5) +
+  geom_treemap_subgroup2_border(colour = "white", size = 3) +
+  geom_treemap_text(colour = "white", place = "centre", size = 12) +
+  theme(legend.position = "none", plot.title=element_text(size=20, face="bold"))
+ggsave("riverine_impactGroups.jpg", width = 12, height = 10)
+
+
+# ================================================================
+# REP IN TOPO MOUNDS
+# ================================================================
+
+# new dataset
+topoVis = RIV2 %>% select(c(fid, accuracy, vis_topo, mnd_rep))
+head(topoVis)
+dim(topoVis)
+
+# keep only "vis_topo" = "yes"
+topoVis = subset(topoVis, accuracy!="no" & vis_topo!="no" & vis_topo != "not available")
+dim(topoVis)
+
+# frequencies
+tableTopoVIS = topoVis %>% group_by(mnd_rep) %>% dplyr::summarize(num=n())
+str(tableTopoVIS)
+
+# ggplot
+featureOrder <- c("hatchure mound", "form line", "graves", 
+                  "form line with grave", "fort", "fort area with temple", 
+                  "forest area with temple", "barren land with temple")
+
+featureColors = c("hatchure mound"="#c48624", "form line"="#736b5f", 
+                  "graves"="#c27ba0",  "form line with grave"="#85586f", 
+                  "fort"="#cc0000", "fort area with temple"="darkred", 
+                  "forest area with temple"="#93c47d", "barren land with temple"="#feeaa6")
+
+ggplot(tableTopoVIS, aes(x=mnd_rep, y=num, colour=mnd_rep)) +
+  geom_segment(aes(x=mnd_rep, xend=mnd_rep, y=0, yend=num, linewidth=0.5)) +
+  geom_point(size=15) +  
+  scale_x_discrete(limits=rev(featureOrder)) +
+  scale_color_manual(values=featureColors) +
+  geom_text(aes(label = num), color = "white", fontface = "bold", size = 4) +
+  coord_flip() +
+  theme_bw() +
+  theme(
+    axis.title = element_text(size=16, face="bold"), 
+    axis.text = element_text(size=16),
+    panel.grid.major.x = element_blank(), 
+    legend.position = "none"
+  ) +
+  xlab("Mapped features \n") +
+  ylab("\n Frequency")
+ggsave("riverine_topoFeatures.jpg", width = 12, height = 10)
+
+
